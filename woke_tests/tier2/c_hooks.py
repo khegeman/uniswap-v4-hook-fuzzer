@@ -7,9 +7,10 @@ class Hooks(Helpers):
         # s.tokens = []
 
         s._deploy()
+        s._pools_init = {}
 
     @override
-    def pre_flow(s, flow: Callable[..., None]):
+    def pre_flow(s, flow: Callable[..., None], **kwargs):
         with open(csv, "a") as f:
             _ = f.write(f"{s.sequence_num},{s.flow_num},{flow.__name__}\n")
 

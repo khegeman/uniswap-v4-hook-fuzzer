@@ -1,4 +1,12 @@
 from .a_init import *
+from dataclasses import dataclass
+
+
+@dataclass
+class InitializeParameters:
+    token0: MockERC20
+    token1: MockERC20
+    spacing: int
 
 
 class Helpers(Init):
@@ -9,6 +17,8 @@ class Helpers(Init):
         s.token0 = MockERC20.deploy("TestA", "A", 18, 2**128, from_=s.paccs[0])
         s.token1 = MockERC20.deploy("TestA", "B", 18, 2**128, from_=s.paccs[0])
         s.token2 = MockERC20.deploy("TestA", "C", 18, 2**128, from_=s.paccs[0])
+
+        s.tokens = [s.token0, s.token1, s.token2]
 
         s.manager = PoolManager.deploy(500000, from_=s.paccs[0])
 

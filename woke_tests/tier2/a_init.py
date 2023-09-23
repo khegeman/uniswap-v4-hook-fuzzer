@@ -13,8 +13,10 @@ from pytypes.contracts.FullRange import FullRange
 
 from eth_utils import to_wei
 
+from woke_tests.framework.generators.random import fuzz_test
 
-class Init(FuzzTest):
+
+class Init(fuzz_test.FuzzTest):
     chain: Chain
     paccs: Tuple[Account, ...]
     users: Tuple[Account, ...]
