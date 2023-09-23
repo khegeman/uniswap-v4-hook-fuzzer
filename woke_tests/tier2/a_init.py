@@ -22,7 +22,6 @@ class Init(FuzzTest):
 
     # put your contracts here
     # tokens: List[ERC20]
-    
 
     def __init__(s):
         # ===== Initialize accounts =====
