@@ -1,10 +1,5 @@
 from .b_helpers import *
 
-from pytypes.contracts.MockERC20 import MockERC20
-from pytypes.lib.v4periphery.lib.v4core.contracts.PoolManager import PoolManager
-from pytypes.contracts.FullRangeImplementation import FullRangeImplementation
-from pytypes.lib.v4periphery.lib.v4core.contracts.libraries.Hooks import Hooks
-
 
 class Hooks(Helpers):
     @override
@@ -46,41 +41,50 @@ class Hooks(Helpers):
 
             impl = FullRangeImplementation.deploy(manager, fullRange, from_=s.paccs[0])
 
-    #            vm.etch(address(fullRange), address(impl).code);
-    #
-    #            key = createPoolKey(token0, token1);
-    #            id = key.toId();
-    #
-    #            key2 = createPoolKey(token1, token2);
-    #            id2 = key.toId();
-    #
-    #            keyWithLiq = createPoolKey(token0, token2);
-    #            idWithLiq = keyWithLiq.toId();
-    #
-    #            modifyPositionRouter = new PoolModifyPositionTest(manager);
-    #            swapRouter = new PoolSwapTest(manager);
-    #
-    #            token0.approve(address(fullRange), type(uint256).max);
-    #            token1.approve(address(fullRange), type(uint256).max);
-    #            token2.approve(address(fullRange), type(uint256).max);
-    #            token0.approve(address(swapRouter), type(uint256).max);
-    #            token1.approve(address(swapRouter), type(uint256).max);
-    #            token2.approve(address(swapRouter), type(uint256).max);
-    #
-    #            manager.initialize(keyWithLiq, SQRT_RATIO_1_1, ZERO_BYTES);
-    #            fullRange.addLiquidity(
-    #                FullRange.AddLiquidityParams(
-    #                    keyWithLiq.currency0,
-    #                    keyWithLiq.currency1,
-    #                    3000,
-    #                    100 ether,
-    #                    100 ether,
-    #                    99 ether,
-    #                    99 ether,
-    #                    address(this),
-    #                    MAX_DEADLINE
-    #                )
-    #            );
+            key = s.createPoolKey(token0, token1, fullRange)
+            print(key)
+            ID = ToID.deploy(from_=s.paccs[0])
+
+            id = ID.toId(key)
+            print(id)
+
+            key2 = s.createPoolKey(token1, token2, fullRange)
+            #
+            id2 = ID.toId(key2)
+            #
+            keyWithLiq = s.createPoolKey(token0, token2, fullRange)
+            idWithLiq = ID.toId(keyWithLiq)
+
+            modifyPositionRouter = PoolModifyPositionTest.deploy(
+                manager, from_=s.paccs[0]
+            )
+            token0.approve(fullRange, UINT_MAX, from_=s.paccs[0])
+            token1.approve(fullRange, UINT_MAX, from_=s.paccs[0])
+            token2.approve(fullRange, UINT_MAX, from_=s.paccs[0])
+
+            swapRouter = PoolSwapTest.deploy(manager, from_=s.paccs[0])
+
+            token0.approve(swapRouter, UINT_MAX, from_=s.paccs[0])
+            token1.approve(swapRouter, UINT_MAX, from_=s.paccs[0])
+            token2.approve(swapRouter, UINT_MAX, from_=s.paccs[0])
+
+        # manager.initialize(keyWithLiq, SQRT_RATIO_1_1, bytes(), from_=s.paccs[0])
+        #
+
+    #        #            manager.initialize(keyWithLiq, SQRT_RATIO_1_1, ZERO_BYTES);
+    #        fullRange.addLiquidity(
+    #            FullRange.AddLiquidityParams(
+    #                keyWithLiq.currency0,
+    #                keyWithLiq.currency1,
+    #                3000,
+    #                100,  # ether,
+    #                100,  # ether,
+    #                99,  # ether,
+    #                99,  # ether,
+    #                s.paccs[0],
+    #                MAX_DEADLINE
+    #            ), from_=s.paccs[0]
+    #        )
 
     @override
     def pre_flow(s, flow: Callable[..., None]):
