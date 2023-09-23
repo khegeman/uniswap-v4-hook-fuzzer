@@ -11,6 +11,8 @@ from pytypes.contracts.PoolModifyPositionTest import PoolModifyPositionTest
 from pytypes.contracts.PoolSwapTest import PoolSwapTest
 from pytypes.contracts.FullRange import FullRange
 
+from eth_utils import to_wei
+
 
 class Init(FuzzTest):
     chain: Chain
@@ -20,6 +22,7 @@ class Init(FuzzTest):
 
     # put your contracts here
     # tokens: List[ERC20]
+    
 
     def __init__(s):
         # ===== Initialize accounts =====
