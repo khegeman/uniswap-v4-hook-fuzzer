@@ -1,5 +1,7 @@
 from .b_helpers import *
 
+from eth_utils import to_wei
+
 
 class Hooks(Helpers):
     @override
@@ -27,40 +29,46 @@ class Hooks(Helpers):
             token1 = MockERC20.deploy("TestA", "B", 18, 2**128, from_=s.paccs[0])
             token2 = MockERC20.deploy("TestA", "C", 18, 2**128, from_=s.paccs[0])
 
-            fullRange = FullRangeImplementation(
-                Address(
-                    uint160(
-                        BEFORE_INITIALIZE_FLAG
-                        | BEFORE_MODIFY_POSITION_FLAG
-                        | BEFORE_SWAP_FLAG
-                    )
+            manager = PoolManager.deploy(500000, from_=s.paccs[0])
+
+            fullRangeAddress = Address(
+                uint160(
+                    BEFORE_INITIALIZE_FLAG
+                    | BEFORE_MODIFY_POSITION_FLAG
+                    | BEFORE_SWAP_FLAG
                 )
             )
 
-            manager = PoolManager.deploy(500000, from_=s.paccs[0])
+            print(
+                "or mask",
+                BEFORE_INITIALIZE_FLAG | BEFORE_MODIFY_POSITION_FLAG | BEFORE_SWAP_FLAG,
+            )
+            print("address is", fullRangeAddress)
 
-            impl = FullRangeImplementation.deploy(manager, fullRange, from_=s.paccs[0])
+            impl = FullRangeImplementation.deploy(
+                manager, fullRangeAddress, from_=s.paccs[0]
+            )
 
-            key = s.createPoolKey(token0, token1, fullRange)
+            key = s.createPoolKey(token0, token1, impl)
             print(key)
             ID = ToID.deploy(from_=s.paccs[0])
 
             id = ID.toId(key)
             print(id)
 
-            key2 = s.createPoolKey(token1, token2, fullRange)
+            key2 = s.createPoolKey(token1, token2, impl)
             #
             id2 = ID.toId(key2)
             #
-            keyWithLiq = s.createPoolKey(token0, token2, fullRange)
+            keyWithLiq = s.createPoolKey(token0, token2, impl)
             idWithLiq = ID.toId(keyWithLiq)
 
             modifyPositionRouter = PoolModifyPositionTest.deploy(
                 manager, from_=s.paccs[0]
             )
-            token0.approve(fullRange, UINT_MAX, from_=s.paccs[0])
-            token1.approve(fullRange, UINT_MAX, from_=s.paccs[0])
-            token2.approve(fullRange, UINT_MAX, from_=s.paccs[0])
+            token0.approve(impl, UINT_MAX, from_=s.paccs[0])
+            token1.approve(impl, UINT_MAX, from_=s.paccs[0])
+            token2.approve(impl, UINT_MAX, from_=s.paccs[0])
 
             swapRouter = PoolSwapTest.deploy(manager, from_=s.paccs[0])
 
@@ -68,23 +76,22 @@ class Hooks(Helpers):
             token1.approve(swapRouter, UINT_MAX, from_=s.paccs[0])
             token2.approve(swapRouter, UINT_MAX, from_=s.paccs[0])
 
-        # manager.initialize(keyWithLiq, SQRT_RATIO_1_1, bytes(), from_=s.paccs[0])
-        #
+            manager.initialize(keyWithLiq, SQRT_RATIO_1_1, bytes(), from_=s.paccs[0])
 
-    #        #            manager.initialize(keyWithLiq, SQRT_RATIO_1_1, ZERO_BYTES);
-    #        fullRange.addLiquidity(
-    #            FullRange.AddLiquidityParams(
-    #                keyWithLiq.currency0,
-    #                keyWithLiq.currency1,
-    #                3000,
-    #                100,  # ether,
-    #                100,  # ether,
-    #                99,  # ether,
-    #                99,  # ether,
-    #                s.paccs[0],
-    #                MAX_DEADLINE
-    #            ), from_=s.paccs[0]
-    #        )
+            impl.addLiquidity(
+                FullRange.AddLiquidityParams(
+                    keyWithLiq.currency0,
+                    keyWithLiq.currency1,
+                    3000,
+                    to_wei(100, "ether"),  # ether,
+                    to_wei(100, "ether"),  # ether,
+                    to_wei(99, "ether"),  # ether,
+                    to_wei(99, "ether"),  # ether,
+                    s.paccs[0],
+                    MAX_DEADLINE,
+                ),
+                from_=s.paccs[0],
+            )
 
     @override
     def pre_flow(s, flow: Callable[..., None]):
