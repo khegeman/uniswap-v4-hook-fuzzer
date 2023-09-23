@@ -1,3 +1,4 @@
+from pytypes.lib.v4periphery.lib.v4core.contracts.libraries.Pool import Pool
 from .d_impl import *
 
 # from pytypes.contracts.FullRange import TickSpacingNotDefault
@@ -22,11 +23,12 @@ class Flows(Impl):
             spacing=manager_initialize_inputs.spacing,
         )
         should_revert = manager_initialize_inputs.spacing != TICK_SPACING
-        should_revert |= s._pools_init.get(key, False)
+        pool_id = s.PoolKeyToID(key)
+        should_revert |= s._pools_init.get(pool_id, False)
         try:
             s.manager.initialize(key, SQRT_RATIO_1_1, bytes(), from_=s.paccs[0])
-            assert should_revert == False
-        #  s._pools_init[key]=true
+            assert should_revert is False
+            s._pools_init[pool_id] = True
         except FullRange.TickSpacingNotDefault as e:
             assert should_revert
         except Pool.PoolAlreadyInitialized as e:

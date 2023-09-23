@@ -35,6 +35,7 @@ class Helpers(Init):
         s.key = s.createPoolKey(s.token0, s.token1, s.impl)
 
         ID = ToID.deploy(from_=s.paccs[0])
+        s.PoolKeyToID = ID.toId
 
         id = ID.toId(s.key)
 
