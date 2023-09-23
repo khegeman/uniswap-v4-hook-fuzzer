@@ -9,7 +9,7 @@ from pytypes.lib.v4periphery.lib.v4core.contracts.types.Currency import Currency
 from pytypes.contracts.PoolID import ToID
 from pytypes.contracts.PoolModifyPositionTest import PoolModifyPositionTest
 from pytypes.contracts.PoolSwapTest import PoolSwapTest
-from pytypes.lib.v4periphery.contracts.hooks.examples.FullRange import FullRange
+from pytypes.contracts.FullRange import FullRange
 
 
 class Init(FuzzTest):

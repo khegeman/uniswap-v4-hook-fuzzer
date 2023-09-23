@@ -76,6 +76,7 @@ class Hooks(Helpers):
             token1.approve(swapRouter, UINT_MAX, from_=s.paccs[0])
             token2.approve(swapRouter, UINT_MAX, from_=s.paccs[0])
 
+            print("key", keyWithLiq, keyWithLiq.hooks)
             manager.initialize(keyWithLiq, SQRT_RATIO_1_1, bytes(), from_=s.paccs[0])
 
             impl.addLiquidity(
