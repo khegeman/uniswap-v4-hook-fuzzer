@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 
 @dataclass
-class InitializeParameters:
+class KeyParameters:
     token0: MockERC20
     token1: MockERC20
     spacing: int
@@ -49,31 +49,32 @@ class Helpers(Init):
         s.modifyPositionRouter = PoolModifyPositionTest.deploy(
             s.manager, from_=s.paccs[0]
         )
-        s.token0.approve(s.impl, UINT_MAX, from_=s.paccs[0])
-        s.token1.approve(s.impl, UINT_MAX, from_=s.paccs[0])
-        s.token2.approve(s.impl, UINT_MAX, from_=s.paccs[0])
-
         s.swapRouter = PoolSwapTest.deploy(s.manager, from_=s.paccs[0])
 
-        s.token0.approve(s.swapRouter, UINT_MAX, from_=s.paccs[0])
-        s.token1.approve(s.swapRouter, UINT_MAX, from_=s.paccs[0])
+        for user in s.users:
+            for token in s.tokens:
+                token.transfer(user, to_wei(200, "ether"), from_=s.paccs[0])
+                token.approve(s.impl, UINT_MAX, from_=user)
+                token.approve(s.swapRouter, UINT_MAX, from_=user)
 
         s.manager.initialize(s.keyWithLiq, SQRT_RATIO_1_1, bytes(), from_=s.paccs[0])
+        s._pools_keys[idWithLiq] = s.keyWithLiq
 
-        s.impl.addLiquidity(
-            FullRange.AddLiquidityParams(
-                s.keyWithLiq.currency0,
-                s.keyWithLiq.currency1,
-                3000,
-                to_wei(100, "ether"),  # ether,
-                to_wei(100, "ether"),  # ether,
-                to_wei(99, "ether"),  # ether,
-                to_wei(99, "ether"),  # ether,
-                s.paccs[0],
-                MAX_DEADLINE,
-            ),
-            from_=s.paccs[0],
-        )
+    #      minted = s.impl.addLiquidity(
+    #          FullRange.AddLiquidityParams(
+    #              s.keyWithLiq.currency0,
+    #              s.keyWithLiq.currency1,
+    #              3000,
+    #              to_wei(100, "ether"),  # ether,
+    #              to_wei(100, "ether"),  # ether,
+    #              to_wei(99, "ether"),  # ether,
+    #              to_wei(99, "ether"),  # ether,
+    #              s.users[0],
+    #              MAX_DEADLINE,
+    #          ),
+    #          from_=s.users[0],
+    #      )
+    #  print("minted", minted)
 
     def createPoolKey(
         s,
@@ -83,9 +84,11 @@ class Helpers(Init):
         spacing: int = TICK_SPACING,
     ) -> PoolKey:
         (t0, t1) = (
-            (tokenA, tokenB) if tokenA.address < tokenB.address else (tokenB, tokenA)
+            (tokenA, tokenB)
+            if get_address(tokenA) < get_address(tokenB)
+            else (tokenB, tokenA)
         )
-        return PoolKey(t0.address, t1.address, 3000, spacing, fullRange)
+        return PoolKey(get_address(t0), get_address(t1), 3000, spacing, fullRange)
         ...
 
     #    if (address(tokenA) > address(tokenB)) (tokenA, tokenB) = (tokenB, tokenA);

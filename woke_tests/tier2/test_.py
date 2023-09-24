@@ -2,6 +2,10 @@ from .g_issues import *
 
 # pyright: basic
 
+import random
+
+random.seed(44)
+
 
 def on_revert_handler(e: TransactionRevertedError):
     if e.tx is not None:

@@ -5,9 +5,8 @@ class Hooks(Helpers):
     @override
     def pre_sequence(s):
         # s.tokens = []
-
+        s._pools_keys = {}
         s._deploy()
-        s._pools_init = {}
 
     @override
     def pre_flow(s, flow: Callable[..., None], **kwargs):

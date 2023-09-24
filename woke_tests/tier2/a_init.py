@@ -10,9 +10,9 @@ from pytypes.contracts.PoolID import ToID
 from pytypes.contracts.PoolModifyPositionTest import PoolModifyPositionTest
 from pytypes.contracts.PoolSwapTest import PoolSwapTest
 from pytypes.contracts.FullRange import FullRange
-
+from pytypes.lib.v4periphery.lib.v4core.contracts.libraries.Pool import Pool
 from eth_utils import to_wei
-
+from woke_tests.framework import get_address
 from woke_tests.framework.generators.random import fuzz_test
 
 
