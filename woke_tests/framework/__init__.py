@@ -22,7 +22,6 @@ MAX_UINT = 2**256 - 1
 
 
 from .collector import JsonCollector
-from .mirror import Mirror
 
 
 from contextlib import contextmanager

@@ -109,6 +109,9 @@ class V4Test(fuzz_test.FuzzTest):
         )
         return PoolKey(get_address(t0), get_address(t1), 3000, spacing, hook)
 
+    def random_token(self) -> MockERC20:
+        return random.choice(self.tokens)
+
     def random_key(self) -> KeyParameters:
         prob = random.uniform(0, 1)
         spacing = TICK_SPACING if prob < 0.9 else TICK_SPACING + 1
@@ -155,6 +158,7 @@ class V4Test(fuzz_test.FuzzTest):
         should_revert = random_key.spacing != TICK_SPACING
         pool_id = self.PoolKeyToID(key)
         should_revert |= pool_id in self._pools_keys
+
         try:
             tx = self.manager.initialize(
                 key, SQRT_RATIO_1_1, bytes(), from_=random_user
