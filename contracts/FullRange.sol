@@ -23,6 +23,8 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 import "@uniswap/v4-periphery/contracts/libraries/LiquidityAmounts.sol";
 
+import "woke/console.sol";
+
 contract FullRange is BaseHook, ILockCallback {
     using CurrencyLibrary for Currency;
     using PoolIdLibrary for PoolKey;
@@ -156,6 +158,8 @@ contract FullRange is BaseHook, ILockCallback {
         }
     }
 
+
+// afterMo,before / after swap; 
     function removeLiquidity(RemoveLiquidityParams calldata params)
         public
         virtual
@@ -189,12 +193,22 @@ contract FullRange is BaseHook, ILockCallback {
 
         erc20.burn(msg.sender, params.liquidity);
     }
+    function afterInitialize(address, PoolKey calldata, uint160, int24, bytes calldata)
+        external
+        override
+        returns (bytes4)
+   {
+        console.log("inside after initialize");
+        return FullRange.afterInitialize.selector;
+   }
 
     function beforeInitialize(address, PoolKey calldata key, uint160, bytes calldata)
         external
         override
         returns (bytes4)
     {
+        console.log("beforeInitialize");
+
         if (key.tickSpacing != 60) revert TickSpacingNotDefault();
 
         PoolId poolId = key.toId();
@@ -210,8 +224,9 @@ contract FullRange is BaseHook, ILockCallback {
                 Strings.toString(uint256(key.fee))
             )
         );
+        console.log(tokenSymbol);
         address poolToken = address(new UniswapV4ERC20(tokenSymbol, tokenSymbol));
-
+        console.log(poolToken);
         poolInfo[poolId] = PoolInfo({hasAccruedFees: false, liquidityToken: poolToken});
 
         return FullRange.beforeInitialize.selector;
@@ -227,6 +242,16 @@ contract FullRange is BaseHook, ILockCallback {
 
         return FullRange.beforeModifyPosition.selector;
     }
+    function afterModifyPosition(
+        address,
+        PoolKey calldata,
+        IPoolManager.ModifyPositionParams calldata,
+        BalanceDelta,
+        bytes calldata
+    ) external override returns (bytes4) {
+        return FullRange.afterModifyPosition.selector;
+    }
+
 
     function beforeSwap(address, PoolKey calldata key, IPoolManager.SwapParams calldata, bytes calldata)
         external
@@ -241,6 +266,13 @@ contract FullRange is BaseHook, ILockCallback {
         }
 
         return IHooks.beforeSwap.selector;
+    }
+    function afterSwap(address, PoolKey calldata, IPoolManager.SwapParams calldata, BalanceDelta, bytes calldata)
+        external
+        override
+        returns (bytes4)
+    {
+        return FullRange.afterSwap.selector;
     }
 
     function modifyPosition(PoolKey memory key, IPoolManager.ModifyPositionParams memory params)

@@ -1,7 +1,7 @@
 from .e_flows import *
 
+# V4 generic invariants
+
 
 class Invariants(Flows):
-    @invariant()
-    def inv_one_equals_one(s):
-        assert 1 == 1
+    ...
