@@ -60,22 +60,6 @@ class Helpers(Init):
         s.manager.initialize(s.keyWithLiq, SQRT_RATIO_1_1, bytes(), from_=s.paccs[0])
         s._pools_keys[idWithLiq] = s.keyWithLiq
 
-    #      minted = s.impl.addLiquidity(
-    #          FullRange.AddLiquidityParams(
-    #              s.keyWithLiq.currency0,
-    #              s.keyWithLiq.currency1,
-    #              3000,
-    #              to_wei(100, "ether"),  # ether,
-    #              to_wei(100, "ether"),  # ether,
-    #              to_wei(99, "ether"),  # ether,
-    #              to_wei(99, "ether"),  # ether,
-    #              s.users[0],
-    #              MAX_DEADLINE,
-    #          ),
-    #          from_=s.users[0],
-    #      )
-    #  print("minted", minted)
-
     def createPoolKey(
         s,
         tokenA: MockERC20,
