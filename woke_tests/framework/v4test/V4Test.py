@@ -27,7 +27,6 @@ class V4Test(fuzz_test.FuzzTest):
     users: Tuple[Account, ...]
     state: State  # pyright: ignore [reportUninitializedInstanceVariable]
 
-class AbstractClassExample(ABC):
     @abstractmethod
     def get_hook_impl(self) -> IHooks:
         """Gets the hook implementation.
@@ -51,10 +50,10 @@ class AbstractClassExample(ABC):
     def should_initialize_revert(
         self, e: Exception, key: PoolKey, user: Account
     ) -> bool:
-        """Determines if a pool manager initialize should revert 
+        """Determines if a pool manager initialize should revert
 
         This method should be overridden by subclasses to provide
-        logic for deciding if a pool manager initialized should revert 
+        logic for deciding if a pool manager initialized should revert
         based on the given parameters and exception.
 
         Args:
@@ -66,7 +65,6 @@ class AbstractClassExample(ABC):
             bool: True if a revert is expected for the given data, False otherwise.
         """
         return False
-
 
     def __init__(self):
         # ===== Initialize accounts =====
@@ -80,18 +78,36 @@ class AbstractClassExample(ABC):
         for idx, usr in enumerate(self.users):
             usr.label = crypto_names[idx]
 
-# -----------------------------------
-# SECTION 1: Data generation methods
-# -----------------------------------
+    # -----------------------------------
+    # SECTION 1: Data generation methods 
+    # -----------------------------------
 
     def random_user(self) -> Account:
+        """Generates a random user from the available user list.
+
+        Returns:
+            Account: A randomly selected user account.
+        """
         return random.choice(self.users)
 
-
     def random_token(self) -> MockERC20:
+        """Generates a random token from the available token list.
+
+        Returns:
+            MockERC20: A randomly selected token.
+        """
         return random.choice(self.tokens)
 
     def random_key(self) -> KeyParameters:
+        """Generates random key parameters for pool operations.
+
+        A KeyParameters object is generated with random tokens and spacing.
+        There's a 90% chance the spacing will be set to TICK_SPACING, and a
+        10% chance it will be set to TICK_SPACING + 1.
+
+        Returns:
+            KeyParameters: Randomly generated key parameters.
+        """
         prob = random.uniform(0, 1)
         spacing = TICK_SPACING if prob < 0.9 else TICK_SPACING + 1
         return KeyParameters(
@@ -101,7 +117,11 @@ class AbstractClassExample(ABC):
         )
 
     def initialized_pool(self) -> PoolKey:
-        # returns a random intialized pool
+        """Retrieves a random initialized pool or creates a new PoolKey object if none exist.
+
+        Returns:
+            PoolKey: A randomly selected initialized pool or a new PoolKey object.
+        """
         return (
             random.choice(list(self._pools_keys.values()))
             if len(self._pools_keys.values()) > 0
@@ -109,6 +129,11 @@ class AbstractClassExample(ABC):
         )
 
     def swap_params(self) -> IPoolManager.SwapParams:
+        """Generates random swap parameters for pool operations.
+
+        Returns:
+            IPoolManager.SwapParams: Randomly generated swap parameters.
+        """
         zeroForOne = random.uniform(0, 1) > 0.5
         return IPoolManager.SwapParams(
             zeroForOne=zeroForOne,
@@ -117,14 +142,41 @@ class AbstractClassExample(ABC):
         )
 
     def test_settings(self) -> PoolSwapTest.TestSettings:
+        """Generates a test settings object with specified parameters.
+
+        Returns:
+            PoolSwapTest.TestSettings: A TestSettings object with withdrawTokens set to True and 
+                                       settleUsingTransfer set to True.
+        """
         return PoolSwapTest.TestSettings(withdrawTokens=True, settleUsingTransfer=True)
-    
-# -----------------------------------
-# SECTION 2: Flows
-# -----------------------------------
+
+
+    # -----------------------------------
+    # SECTION 2: Flows
+    # -----------------------------------
 
     @flow()
-    def manager_initialize(self, random_key: KeyParameters, random_user: Account):
+    def pool_manager_initialize(self, random_key: KeyParameters, random_user: Account):
+        """Initializes a pool with a specified pool key, called by a user account.
+
+        This method first creates a pool key using the given `random_key` and `random_user`.
+        It then checks if a revert operation should be initialized based on the key spacing and
+        whether the pool ID is already present in the `_pools_keys` dictionary.
+
+        If no exceptions are raised during the initialization of the manager, the `pool_id` and `key`
+        are added to the `_pools_keys` dictionary. If a `Pool.PoolAlreadyInitialized` exception is
+        raised and a revert was expected, it's handled accordingly. Any other unexpected exceptions
+        trigger a check to `should_initialize_revert` to decide if a revert operation should be
+        initialized, and raises an AssertionError if a revert was not expected.
+
+        Args:
+            random_key (KeyParameters): The parameters used to create a pool key.
+            random_user (Account): The user account to call initialize with
+
+        Raises:
+            AssertionError: If an unexpected revert occurs or if `should_revert` is False when
+                             `Pool.PoolAlreadyInitialized` exception is raised.
+        """        
         key = self.createPoolKey(
             random_key.token0,
             random_key.token1,
@@ -156,17 +208,32 @@ class AbstractClassExample(ABC):
         swap_params: IPoolManager.SwapParams,
         test_settings: PoolSwapTest.TestSettings,
     ):
+        """Executes a token swap on the swapRouter with the specified parameters.
+
+        This method attempts to perform a token swap operation using the swapRouter. 
+        If the swap operation fails, it catches any exception and prints an error message to the console.
+
+        Args:
+            random_user (Account): The account executing the swap operation.
+            initialized_pool (PoolKey): The pool where the swap operation occurs.
+            swap_params (IPoolManager.SwapParams): The parameters for the swap operation.
+            test_settings (PoolSwapTest.TestSettings): Additional settings for the swap test.
+
+        Raises:
+            Exception: Any exceptions thrown by the swapRouter.swap method are caught - TODO validate error
+        """
         try:
             self.swapRouter.swap(
                 initialized_pool, swap_params, test_settings, from_=random_user
             )
         except Exception as e:
             # how do we check if it should revert?
-            print("swap error is ", e)
+            ...
 
-# -----------------------------------
-# SECTION 3: Callbacks
-# -----------------------------------
+
+    # -----------------------------------
+    # SECTION 3: Callbacks
+    # -----------------------------------
 
     @override
     def pre_invariant(self, i):
@@ -186,9 +253,9 @@ class AbstractClassExample(ABC):
         with open(csv, "a") as f:
             _ = f.write(f"{self.sequence_num},{self.flow_num},{flow.__name__}\n")
 
-# -----------------------------------
-# SECTION 4: Helpers
-# -----------------------------------
+    # -----------------------------------
+    # SECTION 4: Helpers
+    # -----------------------------------
 
     def _deploy(self):
         self.tokens = [
@@ -211,11 +278,6 @@ class AbstractClassExample(ABC):
                 token.approve(self.swapRouter, UINT_MAX, from_=user)
 
         self._hook_deploy()
-
-
-
-
-
 
     def approve_users(self, contract):
         for user in self.users:
