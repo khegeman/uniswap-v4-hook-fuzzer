@@ -111,7 +111,6 @@ class FuzzTest(fuzzing.FuzzTest):
                 self.pre_flow(flow, **fp)
 
                 if collector is not None:
-                    print("save", flow)
                     collector.collect(self, flow, **fp)
 
                 flow(self, *flow_params)

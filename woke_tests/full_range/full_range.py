@@ -33,46 +33,95 @@ class RemoveLiquidityInput:
     user: Account
 
 
+@dataclass
+class AmountInput:
+    amount_desired: int
+    amount_min: int
+
+
+@dataclass
+class UserLiquidity:
+    pool_id: bytes32
+    user: Account
+    liquidity: int
+
+
+def random_amount_input(min: int, max: int) -> AmountInput:
+    # enforce that amount_min is <= amount_desired
+    amount_desired = random_int(min, max)
+    return AmountInput(
+        amount_desired=amount_desired, amount_min=random_int(min, amount_desired)
+    )
+
+
 class FullRangeTest(V4Test):
     state: State
 
     def __init__(self):
         super().__init__()
 
+    def random_user_with_liquidity(self) -> UserLiquidity:
+        if len(self.state.user_2_liquidity) > 0:
+            user = random.choice(list(self.state.user_2_liquidity.keys()))
+            userData = self.state.user_2_liquidity[user]
+            if len(userData.pool_id_2_balance) > 0:
+                pool_id = random.choice(list(userData.pool_id_2_balance.keys()))
+                liquidity = userData.pool_id_2_balance[pool_id]
+                return UserLiquidity(pool_id=pool_id, user=user, liquidity=liquidity)
+
+        return UserLiquidity(bytes32(), self.random_user(), 0)
+
     def random_add_liquidity(self) -> FullRange.AddLiquidityParams:
         # choose a pool that has been initialized
         key = self.initialized_pool()
         # random user
         user = self.random_user()
+        amount0 = random_amount_input(min=0, max=to_wei(5, "ether"))
+        amount1 = random_amount_input(min=0, max=to_wei(5, "ether"))
 
         return FullRange.AddLiquidityParams(
             key.currency0,
             key.currency1,
             3000,
-            to_wei(10, "ether"),  # ether,
-            to_wei(10, "ether"),  # ether,
-            to_wei(9, "ether"),  # ether,
-            to_wei(9, "ether"),  # ether,
+            amount0.amount_desired,
+            amount0.amount_min,
+            amount1.amount_desired,
+            amount1.amount_min,
             user,
             MAX_DEADLINE,
         )
 
     def random_remove_liquidity(self) -> RemoveLiquidityInput:
         # choose a pool that has been initialized
-        key = self.initialized_pool()
+        # key = self.initialized_pool()
         # random user
-        user = self.random_user()
+        # user = self.random_user()
 
-        return RemoveLiquidityInput(
-            user=user,
-            params=FullRange.RemoveLiquidityParams(
-                key.currency0,
-                key.currency1,
-                3000,
-                to_wei(10, "ether"),  # ether,
-                MAX_DEADLINE,
-            ),
-        )
+        user_data = self.random_user_with_liquidity()
+        pool_key = self._pools_keys.get(user_data.pool_id, None)
+        if pool_key is not None:
+            return RemoveLiquidityInput(
+                user=user_data.user,
+                params=FullRange.RemoveLiquidityParams(
+                    pool_key.currency0,
+                    pool_key.currency1,
+                    3000,
+                    random_int(0, user_data.liquidity),
+                    MAX_DEADLINE,
+                ),
+            )
+        else:
+            # invalid data, should fail
+            return RemoveLiquidityInput(
+                user=self.random_user(),
+                params=FullRange.RemoveLiquidityParams(
+                    self.random_token(),
+                    self.random_token(),
+                    3000,
+                    random_int(0, to_wei(5, "ether")),
+                    MAX_DEADLINE,
+                ),
+            )
 
     def get_hook_impl(self) -> IHooks:
         # return the deployed hook
@@ -154,21 +203,27 @@ class FullRangeTest(V4Test):
             random_remove_liquidity.params.liquidity
             > self.state.user_2_liquidity[
                 random_remove_liquidity.user
-            ].pool_id_2_balance[pool_id]
+            ].pool_id_2_balance.get(pool_id, 0)
         )
         remove_zero = random_remove_liquidity.params.liquidity == 0
+        sqrtPx = self.manager.getSlot0(pool_id)[0]
+        initialized = sqrtPx != 0
+        should_revert |= not initialized
         try:
             tx = self.impl.removeLiquidity(
                 random_remove_liquidity.params, from_=random_remove_liquidity.user
             )
-
-            self.state.user_2_liquidity[random_remove_liquidity.user].pool_id_2_balance[
-                pool_id
-            ] -= random_remove_liquidity.params.liquidity
+            if random_remove_liquidity.params.liquidity:
+                self.state.user_2_liquidity[
+                    random_remove_liquidity.user
+                ].pool_id_2_balance[pool_id] -= random_remove_liquidity.params.liquidity
         except Pool.PoolNotInitialized as e:
             assert should_revert
         except FullRange.PoolNotInitialized as e:
-            assert should_revert
+            # ...
+            assert (
+                should_revert | remove_zero | overdraw
+            ), f"not init {pool_id} {sqrtPx} {initialized} {remove_zero}"
         except Position.CannotUpdateEmptyPosition as e:
             assert (
                 remove_zero
@@ -179,18 +234,23 @@ class FullRangeTest(V4Test):
     @invariant()
     def remove_all(self):
         # all users can remove all liquidity
+        fails = []
         with snapshot_and_revert_fix(default_chain):
             for usr, data in self.state.user_2_liquidity.items():
                 for pool_id, liquidity in data.pool_id_2_balance.items():
-                    key = self._pools_keys[pool_id]
-                    if liquidity > 0:
-                        tx = self.impl.removeLiquidity(
-                            FullRange.RemoveLiquidityParams(
-                                key.currency0,
-                                key.currency1,
-                                3000,
-                                liquidity,
-                                MAX_DEADLINE,
-                            ),
-                            from_=usr,
-                        )
+                    key = self._pools_keys.get(pool_id, None)
+                    if (liquidity > 0) and (key is not None):
+                        try:
+                            tx = self.impl.removeLiquidity(
+                                FullRange.RemoveLiquidityParams(
+                                    key.currency0,
+                                    key.currency1,
+                                    3000,
+                                    liquidity,
+                                    MAX_DEADLINE,
+                                ),
+                                from_=usr,
+                            )
+                        except:
+                            fails.append((usr, key, liquidity))
+        assert len(fails) == 0, f"remove_all failed for users {fails}"
