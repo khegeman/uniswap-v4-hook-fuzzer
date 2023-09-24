@@ -1,4 +1,6 @@
-# Eth Global 2023
+# Uniswap V4 Hook Fuzzer
+
+![Uniswap V4 Hook Fuzzer](./logo.svg)
 
 ## Overview
 
