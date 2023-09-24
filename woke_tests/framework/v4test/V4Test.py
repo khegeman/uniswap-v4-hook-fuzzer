@@ -27,13 +27,46 @@ class V4Test(fuzz_test.FuzzTest):
     users: Tuple[Account, ...]
     state: State  # pyright: ignore [reportUninitializedInstanceVariable]
 
+class AbstractClassExample(ABC):
     @abstractmethod
-    def get_hook_impl() -> IHooks:
-        ...
+    def get_hook_impl(self) -> IHooks:
+        """Gets the hook implementation.
+
+        This method should be overridden by subclasses to provide
+        the specific hook implementation.
+
+        Returns:
+            IHooks: An instance of a class that implements the IHooks interface.
+        """
 
     @abstractmethod
     def _hook_deploy(self):
-        ...
+        """Deploys the hook.
+
+        This method should be overridden by subclasses to provide
+        the specific deployment logic for the hook.
+        """
+
+    @abstractmethod
+    def should_initialize_revert(
+        self, e: Exception, key: PoolKey, user: Account
+    ) -> bool:
+        """Determines if a pool manager initialize should revert 
+
+        This method should be overridden by subclasses to provide
+        logic for deciding if a pool manager initialized should revert 
+        based on the given parameters and exception.
+
+        Args:
+            e (Exception): The exception that was raised.
+            key (PoolKey): The pool key associated with the operation.
+            user (Account): The user account associated with the operation.
+
+        Returns:
+            bool: True if a revert is expected for the given data, False otherwise.
+        """
+        return False
+
 
     def __init__(self):
         # ===== Initialize accounts =====
@@ -47,67 +80,13 @@ class V4Test(fuzz_test.FuzzTest):
         for idx, usr in enumerate(self.users):
             usr.label = crypto_names[idx]
 
+# -----------------------------------
+# SECTION 1: Data generation methods
+# -----------------------------------
+
     def random_user(self) -> Account:
         return random.choice(self.users)
 
-    @override
-    def pre_invariant(self, i):
-        self.inside_invariant = True
-
-    @override
-    def post_invariant(self, i):
-        self.inside_invariant = False
-
-    @override
-    def pre_sequence(self):
-        self._pools_keys = {}
-        self._deploy()
-
-    @override
-    def pre_flow(self, flow: Callable[..., None], **kwargs):
-        with open(csv, "a") as f:
-            _ = f.write(f"{self.sequence_num},{self.flow_num},{flow.__name__}\n")
-
-    def _deploy(self):
-        self.tokens = [
-            MockERC20.deploy(f"Test{i}", f"{i}", 18, 2**128, from_=self.paccs[0])
-            for i in range(3)
-        ]
-
-        self.manager = PoolManager.deploy(500000, from_=self.paccs[0])
-
-        self.modifyPositionRouter = PoolModifyPositionTest.deploy(
-            self.manager, from_=self.paccs[0]
-        )
-        self.swapRouter = PoolSwapTest.deploy(self.manager, from_=self.paccs[0])
-        ID = ToID.deploy(from_=self.paccs[0])
-        self.PoolKeyToID = ID.toId
-
-        for user in self.users:
-            for token in self.tokens:
-                token.transfer(user, to_wei(200, "ether"), from_=self.paccs[0])
-                token.approve(self.swapRouter, UINT_MAX, from_=user)
-
-        self._hook_deploy()
-
-    def approve_users(self, contract):
-        for user in self.users:
-            for token in self.tokens:
-                token.approve(contract, UINT_MAX, from_=user)
-
-    def createPoolKey(
-        s,
-        tokenA: MockERC20,
-        tokenB: MockERC20,
-        hook: IHooks,
-        spacing: int = TICK_SPACING,
-    ) -> PoolKey:
-        (t0, t1) = (
-            (tokenA, tokenB)
-            if get_address(tokenA) < get_address(tokenB)
-            else (tokenB, tokenA)
-        )
-        return PoolKey(get_address(t0), get_address(t1), 3000, spacing, hook)
 
     def random_token(self) -> MockERC20:
         return random.choice(self.tokens)
@@ -139,13 +118,10 @@ class V4Test(fuzz_test.FuzzTest):
 
     def test_settings(self) -> PoolSwapTest.TestSettings:
         return PoolSwapTest.TestSettings(withdrawTokens=True, settleUsingTransfer=True)
-
-    def should_initialize_revert(
-        self, e: Exception, key: PoolKey, user: Account
-    ) -> bool:
-        # this calls into the hook to see if the hook expected the revert exception to occur
-        # for the given parameters
-        return False
+    
+# -----------------------------------
+# SECTION 2: Flows
+# -----------------------------------
 
     @flow()
     def manager_initialize(self, random_key: KeyParameters, random_user: Account):
@@ -187,3 +163,75 @@ class V4Test(fuzz_test.FuzzTest):
         except Exception as e:
             # how do we check if it should revert?
             print("swap error is ", e)
+
+# -----------------------------------
+# SECTION 3: Callbacks
+# -----------------------------------
+
+    @override
+    def pre_invariant(self, i):
+        self.inside_invariant = True
+
+    @override
+    def post_invariant(self, i):
+        self.inside_invariant = False
+
+    @override
+    def pre_sequence(self):
+        self._pools_keys = {}
+        self._deploy()
+
+    @override
+    def pre_flow(self, flow: Callable[..., None], **kwargs):
+        with open(csv, "a") as f:
+            _ = f.write(f"{self.sequence_num},{self.flow_num},{flow.__name__}\n")
+
+# -----------------------------------
+# SECTION 4: Helpers
+# -----------------------------------
+
+    def _deploy(self):
+        self.tokens = [
+            MockERC20.deploy(f"Test{i}", f"{i}", 18, 2**128, from_=self.paccs[0])
+            for i in range(3)
+        ]
+
+        self.manager = PoolManager.deploy(500000, from_=self.paccs[0])
+
+        self.modifyPositionRouter = PoolModifyPositionTest.deploy(
+            self.manager, from_=self.paccs[0]
+        )
+        self.swapRouter = PoolSwapTest.deploy(self.manager, from_=self.paccs[0])
+        ID = ToID.deploy(from_=self.paccs[0])
+        self.PoolKeyToID = ID.toId
+
+        for user in self.users:
+            for token in self.tokens:
+                token.transfer(user, to_wei(200, "ether"), from_=self.paccs[0])
+                token.approve(self.swapRouter, UINT_MAX, from_=user)
+
+        self._hook_deploy()
+
+
+
+
+
+
+    def approve_users(self, contract):
+        for user in self.users:
+            for token in self.tokens:
+                token.approve(contract, UINT_MAX, from_=user)
+
+    def createPoolKey(
+        s,
+        tokenA: MockERC20,
+        tokenB: MockERC20,
+        hook: IHooks,
+        spacing: int = TICK_SPACING,
+    ) -> PoolKey:
+        (t0, t1) = (
+            (tokenA, tokenB)
+            if get_address(tokenA) < get_address(tokenB)
+            else (tokenB, tokenA)
+        )
+        return PoolKey(get_address(t0), get_address(t1), 3000, spacing, hook)
