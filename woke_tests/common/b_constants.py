@@ -1,14 +1,22 @@
+import pathlib
+
 from .a_imports import *
 
 """
 This file contains all the constants used in the project.
 """
 
-csv = plib.Path("gitignore/flows_and_txns.csv")
-# this overwrites the file
-_ = csv.write_text(
-    "sequence_number,flow_number,flow_name,block_number,from,to,return_value,events,console_logs\n"
-)
+
+def create_flow_log() -> plib.Path:
+    """Creates the output flow log for fuzzing runs"""
+    csv = plib.Path("gitignore/flows_and_txns.csv")
+
+    # this overwrites the file
+    _ = csv.write_text(
+        "sequence_number,flow_number,flow_name,block_number,from,to,return_value,events,console_logs\n"
+    )
+
+    return csv
 
 # when we `from woke.testing import *`, we actually import a generic type T
 # this should probably be fixed, but until then, just use different name here

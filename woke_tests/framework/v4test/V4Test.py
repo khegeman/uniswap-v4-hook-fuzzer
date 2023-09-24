@@ -79,7 +79,7 @@ class V4Test(fuzz_test.FuzzTest):
             usr.label = crypto_names[idx]
 
     # -----------------------------------
-    # SECTION 1: Data generation methods 
+    # SECTION 1: Data generation methods
     # -----------------------------------
 
     def random_user(self) -> Account:
@@ -145,7 +145,7 @@ class V4Test(fuzz_test.FuzzTest):
         """Generates a test settings object with specified parameters.
 
         Returns:
-            PoolSwapTest.TestSettings: A TestSettings object with withdrawTokens set to True and 
+            PoolSwapTest.TestSettings: A TestSettings object with withdrawTokens set to True and
                                        settleUsingTransfer set to True.
         """
         return PoolSwapTest.TestSettings(withdrawTokens=True, settleUsingTransfer=True)
@@ -176,7 +176,7 @@ class V4Test(fuzz_test.FuzzTest):
         Raises:
             AssertionError: If an unexpected revert occurs or if `should_revert` is False when
                              `Pool.PoolAlreadyInitialized` exception is raised.
-        """        
+        """
         key = self.createPoolKey(
             random_key.token0,
             random_key.token1,
@@ -210,7 +210,7 @@ class V4Test(fuzz_test.FuzzTest):
     ):
         """Executes a token swap on the swapRouter with the specified parameters.
 
-        This method attempts to perform a token swap operation using the swapRouter. 
+        This method attempts to perform a token swap operation using the swapRouter.
         If the swap operation fails, it catches any exception and prints an error message to the console.
 
         Args:
@@ -250,7 +250,7 @@ class V4Test(fuzz_test.FuzzTest):
 
     @override
     def pre_flow(self, flow: Callable[..., None], **kwargs):
-        with open(csv, "a") as f:
+        with open(create_flow_log(), "a") as f:
             _ = f.write(f"{self.sequence_num},{self.flow_num},{flow.__name__}\n")
 
     # -----------------------------------

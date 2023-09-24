@@ -37,7 +37,7 @@ def make_tx_callback(range_test):
         print(tx.call_trace)
         print("\n")
 
-        with open(csv, "a") as f:
+        with open(create_flow_log(), "a") as f:
             f.write(
                 f',,,{tx.block_number},{tx.from_},{tx.to},{tx.return_value},"{events}","{tx.console_logs}"\n'
             )
