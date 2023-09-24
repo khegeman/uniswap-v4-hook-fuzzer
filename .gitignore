@@ -8,3 +8,10 @@ __pycache__/
 .hypothesis/
 woke-coverage.cov
 gitignore/*
+venv
+docs/build/
+docs/source/generated/
+.*.sw[a-p]
+*~
+.DS_Store
+.replay
