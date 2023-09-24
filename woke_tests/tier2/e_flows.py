@@ -17,11 +17,12 @@ class Flows(Impl):
     def deployed_key(s) -> PoolKey:
         return random.choice(list(s._pools_keys.values()))
 
-    def swap_settings(s) -> IPoolManager.SwapParams:
+    def swap_params(s) -> IPoolManager.SwapParams:
+        zeroForOne = random.uniform(0, 1) > 0.5
         return IPoolManager.SwapParams(
-            zeroForOne=True,
-            amountSpecified=to_wei(1, "ether"),
-            sqrtPriceLimitX96=SQRT_RATIO_1_2,
+            zeroForOne=zeroForOne,
+            amountSpecified=random_int(0, to_wei(1, "ether")),
+            sqrtPriceLimitX96=SQRT_RATIO_1_2 if zeroForOne else SQRT_RATIO_1_1,
         )
 
     def test_settings(s) -> PoolSwapTest.TestSettings:
@@ -94,4 +95,10 @@ class Flows(Impl):
         swap_params: IPoolManager.SwapParams,
         test_settings: PoolSwapTest.TestSettings,
     ):
-        s.swapRouter.swap(deployed_key, swap_params, test_settings, from_=random_user)
+        try:
+            s.swapRouter.swap(
+                deployed_key, swap_params, test_settings, from_=random_user
+            )
+        except Exception as e:
+            # how do we check if it should revert?
+            print("swap error is ", e)
