@@ -1,7 +1,7 @@
 from .b_helpers import *
 
 
-class Hooks(Helpers):
+class Callbacks(Helpers):
     @override
     def pre_sequence(s):
         # s.tokens = []

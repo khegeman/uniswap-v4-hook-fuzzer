@@ -1,7 +1,7 @@
 from pytypes.lib.v4periphery.lib.v4core.contracts.libraries.Pool import Pool
 from .d_impl import *
 
-# from pytypes.contracts.FullRange import TickSpacingNotDefault
+# flows generic to v4 pools
 
 
 class Flows(Impl):
@@ -14,90 +14,62 @@ class Flows(Impl):
             spacing=spacing,
         )
 
-    def deployed_key(s) -> PoolKey:
-        return random.choice(list(s._pools_keys.values()))
+    def initialized_pool(s) -> PoolKey:
+        # returns a random intialized pool
+        return (
+            random.choice(list(s._pools_keys.values()))
+            if len(s._pools_keys.values()) > 0
+            else PoolKey()
+        )
 
     def swap_params(s) -> IPoolManager.SwapParams:
         zeroForOne = random.uniform(0, 1) > 0.5
         return IPoolManager.SwapParams(
             zeroForOne=zeroForOne,
-            amountSpecified=random_int(0, to_wei(1, "ether")),
+            amountSpecified=random_int(0, to_wei(3, "ether")),
             sqrtPriceLimitX96=SQRT_RATIO_1_2 if zeroForOne else SQRT_RATIO_1_1,
         )
 
     def test_settings(s) -> PoolSwapTest.TestSettings:
         return PoolSwapTest.TestSettings(withdrawTokens=True, settleUsingTransfer=True)
 
-    def random_add_liquidity(s) -> FullRange.AddLiquidityParams:
-        key = s.deployed_key()
-        user = s.random_user()
-
-        return FullRange.AddLiquidityParams(
-            key.currency0,
-            key.currency1,
-            3000,
-            to_wei(10, "ether"),  # ether,
-            to_wei(10, "ether"),  # ether,
-            to_wei(9, "ether"),  # ether,
-            to_wei(9, "ether"),  # ether,
-            user,
-            MAX_DEADLINE,
-        )
-
-    #    this is more involved for now.  I think we need to deploy a manager for each pool
-    #    @flow()
-    #    def manager_initialize(s, random_key: KeyParameters):
-    #        key = s.createPoolKey(
-    #            random_key.token0,
-    #            random_key.token1,
-    #            s.impl,
-    #            spacing=random_key.spacing,
-    #        )
-    #        should_revert = random_key.spacing != TICK_SPACING
-    #        pool_id = s.PoolKeyToID(key)
-    #        should_revert |= pool_id in s._pools_keys
-    #        print("initialize", pool_id)
-    #        try:
-    #            tx = s.manager.initialize(key, SQRT_RATIO_1_1, bytes(), from_=s.paccs[0])
-    #            assert should_revert is False
-    #            s._pools_keys[pool_id] = key
-    #            print("initialize liquidity", pool_id, tx.raw_events)
-    #        except FullRange.TickSpacingNotDefault as e:
-    #            print("manager_init tick wrong? ", key.tickSpacing, random_key.spacing)
-    #            assert should_revert
-    #        except Pool.PoolAlreadyInitialized as e:
-    #            print("manager_init already initialized", pool_id)
-    #            assert should_revert
+    def should_initialize_revert(s, e: Exception, key: PoolKey, user: Account) -> bool:
+        return False
 
     @flow()
-    def add_liquidity(s, random_add_liquidity: FullRange.AddLiquidityParams):
+    def manager_initialize(s, random_key: KeyParameters, random_user: Account):
         key = s.createPoolKey(
-            random_add_liquidity.currency0,
-            random_add_liquidity.currency1,
-            s.impl,
-            spacing=TICK_SPACING,
+            random_key.token0,
+            random_key.token1,
+            s.get_hook_impl(),
+            spacing=random_key.spacing,
         )
+        should_revert = random_key.spacing != TICK_SPACING
         pool_id = s.PoolKeyToID(key)
-        should_revert = not (pool_id in s._pools_keys)
-        print("pool id", pool_id, "revert? ", should_revert)
+        should_revert |= pool_id in s._pools_keys
         try:
-            s.impl.addLiquidity(random_add_liquidity, from_=random_add_liquidity.to)
-        except Pool.PoolNotInitialized as e:
-            assert should_revert
-        except FullRange.PoolNotInitialized as e:
-            assert should_revert
+            tx = s.manager.initialize(key, SQRT_RATIO_1_1, bytes(), from_=random_user)
+            assert should_revert is False
+            s._pools_keys[pool_id] = key
+        except Pool.PoolAlreadyInitialized as e:
+            assert should_revert, f"Pool.PoolAlreadyInitialized id={pool_id}"
+
+        except Exception as e:
+            #   print("manager_init tick wrong? ", key.tickSpacing, random_key.spacing)
+            should_revert = s.should_initialize_revert(e, key, s.paccs[0])
+            assert should_revert, f"Unexpected revert for {key} with user {random_user}"
 
     @flow()
     def swap(
         s,
         random_user: Account,
-        deployed_key: PoolKey,
+        initialized_pool: PoolKey,
         swap_params: IPoolManager.SwapParams,
         test_settings: PoolSwapTest.TestSettings,
     ):
         try:
             s.swapRouter.swap(
-                deployed_key, swap_params, test_settings, from_=random_user
+                initialized_pool, swap_params, test_settings, from_=random_user
             )
         except Exception as e:
             # how do we check if it should revert?

@@ -1,6 +1,8 @@
 from .a_init import *
 from dataclasses import dataclass
 
+from abc import abstractmethod
+
 
 @dataclass
 class KeyParameters:
@@ -13,58 +15,42 @@ class Helpers(Init):
     def random_user(s) -> Account:
         return random.choice(s.users)
 
-    def _deploy(s):
-        s.token0 = MockERC20.deploy("TestA", "A", 18, 2**128, from_=s.paccs[0])
-        s.token1 = MockERC20.deploy("TestA", "B", 18, 2**128, from_=s.paccs[0])
-        s.token2 = MockERC20.deploy("TestA", "C", 18, 2**128, from_=s.paccs[0])
+    @abstractmethod
+    def _hook_deploy(s):
+        ...
 
-        s.tokens = [s.token0, s.token1, s.token2]
+    def _deploy(s):
+        s.tokens = [
+            MockERC20.deploy(f"Test{i}", f"{i}", 18, 2**128, from_=s.paccs[0])
+            for i in range(3)
+        ]
 
         s.manager = PoolManager.deploy(500000, from_=s.paccs[0])
-
-        fullRangeAddress = Address(
-            uint160(
-                BEFORE_INITIALIZE_FLAG | BEFORE_MODIFY_POSITION_FLAG | BEFORE_SWAP_FLAG
-            )
-        )
-
-        s.impl = FullRangeImplementation.deploy(
-            s.manager, fullRangeAddress, from_=s.paccs[0]
-        )
-
-        s.key = s.createPoolKey(s.token0, s.token1, s.impl)
-
-        ID = ToID.deploy(from_=s.paccs[0])
-        s.PoolKeyToID = ID.toId
-
-        id = ID.toId(s.key)
-
-        s.key2 = s.createPoolKey(s.token1, s.token2, s.impl)
-        #
-        id2 = ID.toId(s.key2)
-        #
-        s.keyWithLiq = s.createPoolKey(s.token0, s.token2, s.impl)
-        idWithLiq = ID.toId(s.keyWithLiq)
 
         s.modifyPositionRouter = PoolModifyPositionTest.deploy(
             s.manager, from_=s.paccs[0]
         )
         s.swapRouter = PoolSwapTest.deploy(s.manager, from_=s.paccs[0])
+        ID = ToID.deploy(from_=s.paccs[0])
+        s.PoolKeyToID = ID.toId
 
         for user in s.users:
             for token in s.tokens:
                 token.transfer(user, to_wei(200, "ether"), from_=s.paccs[0])
-                token.approve(s.impl, UINT_MAX, from_=user)
                 token.approve(s.swapRouter, UINT_MAX, from_=user)
 
-        s.manager.initialize(s.keyWithLiq, SQRT_RATIO_1_1, bytes(), from_=s.paccs[0])
-        s._pools_keys[idWithLiq] = s.keyWithLiq
+        s._hook_deploy()
+
+    def approve_users(s, contract):
+        for user in s.users:
+            for token in s.tokens:
+                token.approve(contract, UINT_MAX, from_=user)
 
     def createPoolKey(
         s,
         tokenA: MockERC20,
         tokenB: MockERC20,
-        fullRange: FullRangeImplementation,
+        hook: IHooks,
         spacing: int = TICK_SPACING,
     ) -> PoolKey:
         (t0, t1) = (
@@ -72,8 +58,4 @@ class Helpers(Init):
             if get_address(tokenA) < get_address(tokenB)
             else (tokenB, tokenA)
         )
-        return PoolKey(get_address(t0), get_address(t1), 3000, spacing, fullRange)
-        ...
-
-    #    if (address(tokenA) > address(tokenB)) (tokenA, tokenB) = (tokenB, tokenA);
-    #    return PoolKey(Currency.wrap(address(tokenA)), Currency.wrap(address(tokenB)), 3000, TICK_SPACING, fullRange);
+        return PoolKey(get_address(t0), get_address(t1), 3000, spacing, hook)

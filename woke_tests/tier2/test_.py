@@ -1,4 +1,4 @@
-from .g_issues import *
+from .g_hook_impl import *
 
 # pyright: basic
 
@@ -41,7 +41,7 @@ def test():
     default_chain.tx_callback = tx_callback
     # print('SEQUENCES_COUNT', SEQUENCES_COUNT)
     # print('FLOWS_COUNT', FLOWS_COUNT)
-    Issues().run(
+    HooksImpl().run(
         SEQUENCES_COUNT,
         FLOWS_COUNT,
     )

@@ -1,7 +1,7 @@
-from .c_hooks import *
+from .c_callbacks import *
 
 
-class Impl(Hooks):
+class Impl(Callbacks):
     def impl_random_int(s, x: int):
         # ===== Effects =====
         # ===== Checks  =====
