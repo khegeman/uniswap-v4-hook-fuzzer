@@ -125,8 +125,8 @@ class V4Test(fuzz_test.FuzzTest):
         return (
             random.choice(list(self._pools_keys.values()))
             if len(self._pools_keys.values()) > 0
-            else PoolKey()
-        )
+            else PoolKey(currency0=self.random_token(),currency1=self.random_token(),fee=3000,tickSpacing=TICK_SPACING,hooks=self.get_hook_impl())
+        )                    
 
     def swap_params(self) -> IPoolManager.SwapParams:
         """Generates random swap parameters for pool operations.

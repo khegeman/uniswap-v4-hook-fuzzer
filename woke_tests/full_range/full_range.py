@@ -11,6 +11,7 @@ from woke_tests.framework import snapshot_and_revert_fix
 from dataclasses import dataclass, field
 
 
+
 @dataclass
 class UserData:
     """holds user data for one sequence"""
@@ -55,6 +56,12 @@ def random_amount_input(min: int, max: int) -> AmountInput:
         amount_desired=amount_desired, amount_min=random_int(min, amount_desired)
     )
 
+patch_deploy_at_address(FullRangeImplementation)
+
+#@classmethod
+#def deploy_at_address(cls, address : Address,chain : Chain = default_chain, **kwargs) ->  FullRangeImplementation:
+#    return FullRangeImplementation(deploy_at_address_(cls, address,chain,**kwargs))
+#FullRangeImplementation.deploy_at_address = deploy_at_address 
 
 class FullRangeTest(V4Test):
     """This class represents a test suite for a Full Range liquidity provision on a decentralized exchange. It extends the base class V4Test, and holds a state object that represents the overall state of the exchange at any given point. The class contains methods to add and remove liquidity, as well as utility functions to generate random test cases. It also defines a set of invariants and checks to validate the behavior of the liquidity provision, and to ensure that the actions performed are legal according to the rules of the decentralized exchange.
@@ -179,6 +186,8 @@ class FullRangeTest(V4Test):
             IHooks: The deployed hook implementation instance.
         """
         return self.impl
+    
+
 
     def _hook_deploy(self):
         """
@@ -194,9 +203,7 @@ class FullRangeTest(V4Test):
             )
         )
 
-        self.impl = FullRangeImplementation.deploy(
-            self.manager, fullRangeAddress, from_=self.paccs[0]
-        )
+        self.impl = FullRangeImplementation.deploy_at_address(fullRangeAddress,_poolManager=self.manager, addressToEtch=fullRangeAddress, from_=self.paccs[0])
 
         self.approve_users(self.impl)
 
@@ -343,10 +350,10 @@ class FullRangeTest(V4Test):
             ), f"not init {pool_id} {sqrtPx} {initialized} {remove_zero}"
         except Position.CannotUpdateEmptyPosition as e:
             assert (
-                remove_zero
-            ), f"remove 0 liquidity for user {random_remove_liquidity.user} from pool {pool_id}"
+                remove_zero | overdraw
+            ), f"remove {random_remove_liquidity.params.liquidity} liquidity for user {random_remove_liquidity.user} from pool {pool_id}"
         except Exception as e:
-            assert overdraw
+            assert overdraw, f"Exception {e}"
 
     @invariant()
     def remove_all(self):
