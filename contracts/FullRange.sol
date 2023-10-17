@@ -23,7 +23,7 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 import "@uniswap/v4-periphery/contracts/libraries/LiquidityAmounts.sol";
 
-import "woke/console.sol";
+//import "woke/console.sol";
 
 contract FullRange is BaseHook, ILockCallback {
     using CurrencyLibrary for Currency;
@@ -48,6 +48,8 @@ contract FullRange is BaseHook, ILockCallback {
 
     int256 internal constant MAX_INT = type(int256).max;
     uint16 internal constant MINIMUM_LIQUIDITY = 1000;
+
+    int public slotTest; 
 
     struct CallbackData {
         address sender;
@@ -82,7 +84,9 @@ contract FullRange is BaseHook, ILockCallback {
 
     mapping(PoolId => PoolInfo) public poolInfo;
 
-    constructor(IPoolManager _poolManager) BaseHook(_poolManager) {}
+    constructor(IPoolManager _poolManager) BaseHook(_poolManager) {
+        slotTest  = 5;
+    }
 
     modifier ensure(uint256 deadline) {
         if (deadline < block.timestamp) revert ExpiredPastDeadline();
@@ -159,13 +163,13 @@ contract FullRange is BaseHook, ILockCallback {
     }
 
 
-// afterMo,before / after swap; 
     function removeLiquidity(RemoveLiquidityParams calldata params)
         public
         virtual
         ensure(params.deadline)
         returns (BalanceDelta delta)
     {
+
         PoolKey memory key = PoolKey({
             currency0: params.currency0,
             currency1: params.currency1,
@@ -190,24 +194,15 @@ contract FullRange is BaseHook, ILockCallback {
                 liquidityDelta: -(params.liquidity.toInt256())
             })
         );
-
+        
         erc20.burn(msg.sender, params.liquidity);
     }
-    function afterInitialize(address, PoolKey calldata, uint160, int24, bytes calldata)
-        external
-        override
-        returns (bytes4)
-   {
-        console.log("inside after initialize");
-        return FullRange.afterInitialize.selector;
-   }
 
     function beforeInitialize(address, PoolKey calldata key, uint160, bytes calldata)
         external
         override
         returns (bytes4)
     {
-        console.log("beforeInitialize");
 
         if (key.tickSpacing != 60) revert TickSpacingNotDefault();
 
@@ -224,14 +219,14 @@ contract FullRange is BaseHook, ILockCallback {
                 Strings.toString(uint256(key.fee))
             )
         );
-        console.log(tokenSymbol);
+
         address poolToken = address(new UniswapV4ERC20(tokenSymbol, tokenSymbol));
-        console.log(poolToken);
+
         poolInfo[poolId] = PoolInfo({hasAccruedFees: false, liquidityToken: poolToken});
 
         return FullRange.beforeInitialize.selector;
     }
-
+    
     function beforeModifyPosition(
         address sender,
         PoolKey calldata,
@@ -241,15 +236,6 @@ contract FullRange is BaseHook, ILockCallback {
         if (sender != address(this)) revert SenderMustBeHook();
 
         return FullRange.beforeModifyPosition.selector;
-    }
-    function afterModifyPosition(
-        address,
-        PoolKey calldata,
-        IPoolManager.ModifyPositionParams calldata,
-        BalanceDelta,
-        bytes calldata
-    ) external override returns (bytes4) {
-        return FullRange.afterModifyPosition.selector;
     }
 
 
@@ -265,15 +251,9 @@ contract FullRange is BaseHook, ILockCallback {
             pool.hasAccruedFees = true;
         }
 
-        return IHooks.beforeSwap.selector;
+        return FullRange.beforeSwap.selector;
     }
-    function afterSwap(address, PoolKey calldata, IPoolManager.SwapParams calldata, BalanceDelta, bytes calldata)
-        external
-        override
-        returns (bytes4)
-    {
-        return FullRange.afterSwap.selector;
-    }
+
 
     function modifyPosition(PoolKey memory key, IPoolManager.ModifyPositionParams memory params)
         internal
